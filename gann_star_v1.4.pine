@@ -1,0 +1,757 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Long Niu
+
+//@version=5
+indicator("Gann Square", overlay=true, max_lines_count=500, max_labels_count=500)
+// *****************************************************************************
+// ********************************* Constants *********************************
+// *****************************************************************************
+string groupInlineXYLabels      = "X-Axis and Y-Axis Labels"
+string groupInlineExtraLines    = "Extra Lines"
+string groupInlineColors        = "colors"
+string groupInlineSquare        = "squarecolors"
+string timeLevel                = "TimeLevel"
+string priceLevel               = "PriceLevel"
+int squares                     = 0
+int barIndex                    = bar_index
+float barHigh                   = high
+float barLow                    = low
+string lineDashed               = line.style_dashed
+string lineDotted               = line.style_dotted
+string lineSolid                = line.style_solid
+string lineNone                 = label.style_none
+bool barstateIsNew              = barstate.isnew
+bool barstateIsLast             = barstate.islast
+color colorRed                  = color.red
+color colorWhite                = color.white
+
+// *****************************************************************************
+// ********************************* Inputs ************************************
+// *****************************************************************************
+var int startDate          = input.time(timestamp("2024-01-08"), "Starting Date")
+var string mode            = input.string("Bar Count", "Draw Mode", options = ["Bar Count", "Fibonacci Time Zone"])
+var int barCount           = input.int(90,        "Bar Count", options = [90,180,360,720])
+var int fiboTime           = input.int(9,        "Fibonacci Time Zone", options = [9,18,27,36,63])
+var float maxPrice         = input.float(16650.0, "Manual Max Price")
+var float minPrice         = input.float(16600.0, "Manual Min Price")
+var bool autoPricesAndBar  = input.bool(true,     "Set Upper/Lower Prices and Start Bar Automatically")
+var bool updateNewBar      = input.bool(true,     "Update at new bar")
+var bool timelevelEnabled  = input.bool(true, "Time Level Enabled", group=timeLevel)
+var bool istimelevel1      = input.bool(true, "0.166", inline=timeLevel, group=timeLevel)
+var bool istimelevel2      = input.bool(true, "0.25",  inline=timeLevel, group=timeLevel)
+var bool istimelevel3      = input.bool(true, "0.333", inline=timeLevel, group=timeLevel)
+var bool istimelevel4      = input.bool(true, "0.382", inline=timeLevel, group=timeLevel)
+var bool istimelevel5      = input.bool(true, "0.5",   inline=timeLevel, group=timeLevel)
+var bool istimelevel6      = input.bool(true, "0.618", inline=timeLevel, group=timeLevel)
+var bool istimelevel7      = input.bool(true, "0.666", inline=timeLevel, group=timeLevel)
+var bool istimelevel8      = input.bool(true, "0.75",  inline=timeLevel, group=timeLevel)
+var bool istimelevel9      = input.bool(true, "0.833", inline=timeLevel, group=timeLevel)
+var bool pricelevelEnabled  = input.bool(true, "Price Level Enabled", group=priceLevel)
+var bool ispricelevel1     = input.bool(true, "0.166", inline=priceLevel, group=priceLevel)
+var bool ispricelevel2     = input.bool(true, "0.25",  inline=priceLevel, group=priceLevel)
+var bool ispricelevel3     = input.bool(true, "0.333", inline=priceLevel, group=priceLevel)
+var bool ispricelevel4     = input.bool(true, "0.382", inline=priceLevel, group=priceLevel)
+var bool ispricelevel5     = input.bool(true, "0.5",   inline=priceLevel, group=priceLevel)
+var bool ispricelevel6     = input.bool(true, "0.618", inline=priceLevel, group=priceLevel)
+var bool ispricelevel7     = input.bool(true, "0.666", inline=priceLevel, group=priceLevel)
+var bool ispricelevel8     = input.bool(true, "0.75",  inline=priceLevel, group=priceLevel)
+var bool ispricelevel9     = input.bool(true, "0.833", inline=priceLevel, group=priceLevel)
+var int candlesPerDivision = input.int(1,         "Candles per division", minval=1)
+
+var bool showTopXAxis      = false
+var bool showBottomXAxis   = false
+var bool showLeftYAxis     = false
+var bool showRightYAxis    = false
+var bool showPrices        = false
+var bool showDivisions     = true
+var bool showGrid          = false
+var bool showBackground    = true
+var string patterns        = "None"
+var color labelColor       = color.green
+var color divisionsColor   = color.blue
+var color gridColor        = color.gray
+var color TLSColor         = color.new(color.green, 80)
+var color TMSColor         = color.new(color.red, 80)
+var color TRSColor         = color.new(color.green, 80)
+var color CLSColor         = color.new(color.green, 80)
+var color CMSColor         = color.new(color.red, 80)
+var color CRSColor         = color.new(color.green, 80)
+var color BLSColor         = color.new(color.green, 80)
+var color BMSColor         = color.new(color.red, 80)
+var color BRSColor         = color.new(color.green, 80)
+
+var int dateBarIndex       = 0
+
+if time == startDate
+    dateBarIndex := barIndex
+    if mode == "Fibonacci Time Zone"
+        line.new(bar_index, close, bar_index, close * 1.01, extend = extend.both, color = color.green, style = line.style_dotted, width = 3)
+        line.new(bar_index + 9 * 3, close, bar_index + 9 * 3, close * 1.01, extend = extend.both, color = color.green, style = line.style_dotted, width = 3)
+        line.new(bar_index + 18 * 3, close, bar_index + 18 * 3, close * 1.01, extend = extend.both, color = color.green, style = line.style_dotted, width = 3)
+        line.new(bar_index + 27 * 3, close, bar_index + 27 * 3, close * 1.01, extend = extend.both, color = color.green, style = line.style_dotted, width = 3)
+        line.new(bar_index + 36 * 3, close, bar_index + 36 * 3, close * 1.01, extend = extend.both, color = color.green, style = line.style_dotted, width = 3)
+        line.new(bar_index + 63 * 3, close, bar_index + 63 * 3, close * 1.01, extend = extend.both, color = color.green, style = line.style_dotted, width = 3)
+
+if mode == "Bar Count"
+    squares := barCount
+
+if mode == "Fibonacci Time Zone"
+    squares := fiboTime * 3
+// *****************************************************************************
+// ******************************** Variables **********************************
+// *****************************************************************************
+int startBarIndex    = autoPricesAndBar ? barIndex - math.floor(squares * candlesPerDivision) : dateBarIndex
+int endBarIndex      = startBarIndex + squares * candlesPerDivision
+
+int middleBarIndex   = startBarIndex + squares * candlesPerDivision / 2
+int onethirdPriceBar = (endBarIndex - startBarIndex) / 3
+int barDiff          = squares - math.abs(endBarIndex - barIndex)
+int barIndexDiff     = barDiff <= 0 ? 1 : barDiff
+float atr            = ta.atr(5)
+float highest        = ta.highest(math.floor(squares * candlesPerDivision / 2) + 1)
+float lowest         = ta.lowest(math.floor(squares * candlesPerDivision/ 2) + 1)
+float lowerPrice     = autoPricesAndBar ? lowest : minPrice
+float upperPrice     = autoPricesAndBar ? highest : maxPrice
+float middlePrice    = lowerPrice + (upperPrice - lowerPrice) / 2
+float onethirdPrice  = (upperPrice - lowerPrice) / 3
+
+// *****************************************************************************
+// *************************** One-Time Variables ******************************
+// *****************************************************************************
+var box squareLines          = box.new(barIndex, barHigh, barIndex, barLow, color.new(colorWhite, 50), 2, bgcolor=na)
+var bool buildSquareDone     = false
+var bool buildInputsDone     = false
+var bool[] dashedLineStyles  = array.new_bool()
+var bool[] extendLines       = array.new_bool()
+var bool[] showGroup         = array.new_bool()
+var color[] lineColors       = array.new_color()
+var label[] bottomXAxisArray = array.new_label()
+var label[] leftYAxisArray   = array.new_label()
+var label[] rightYAxisArray  = array.new_label()
+var label[] topXAxisArray    = array.new_label()
+var line[] BLRArray          = array.new_line()
+var line[] BLTArray          = array.new_line()
+var line[] BRLArray          = array.new_line()
+var line[] BRTArray          = array.new_line()
+var line[] TLBArray          = array.new_line()
+var line[] TLRArray          = array.new_line()
+var line[] TRBArray          = array.new_line()
+var line[] TRLArray          = array.new_line()
+var line[] divisionsArray    = array.new_line()
+var line[] extraArray        = array.new_line()
+var line[] gridArray         = array.new_line()
+var line[] diamondArray      = array.new_line()
+var float[] fiboArray        = array.new_float(9)
+var bool[] istimelevel       = array.new_bool(9)
+var bool[] ispricelevel      = array.new_bool(9)
+var line[] fiboTimeArray     = array.new_line()
+var line[] fiboPriceArray    = array.new_line()
+var box back1Square          = box.new(barIndex, barHigh, barIndex, barLow, na, 0, bgcolor=TLSColor)
+var box back2Square          = box.new(barIndex, barHigh, barIndex, barLow, na, 0, bgcolor=TMSColor)
+var box back3Square          = box.new(barIndex, barHigh, barIndex, barLow, na, 0, bgcolor=TRSColor)
+var box back4Square          = box.new(barIndex, barHigh, barIndex, barLow, na, 0, bgcolor=CLSColor)
+var box back5Square          = box.new(barIndex, barHigh, barIndex, barLow, na, 0, bgcolor=CMSColor)
+var box back6Square          = box.new(barIndex, barHigh, barIndex, barLow, na, 0, bgcolor=CRSColor)
+var box back7Square          = box.new(barIndex, barHigh, barIndex, barLow, na, 0, bgcolor=BLSColor)
+var box back8Square          = box.new(barIndex, barHigh, barIndex, barLow, na, 0, bgcolor=BMSColor)
+var box back9Square          = box.new(barIndex, barHigh, barIndex, barLow, na, 0, bgcolor=BRSColor)
+
+array.set(fiboArray, 0, 0.166)
+array.set(fiboArray, 1, 0.25)
+array.set(fiboArray, 2, 0.333)
+array.set(fiboArray, 3, 0.382)
+array.set(fiboArray, 4, 0.5)
+array.set(fiboArray, 5, 0.618)
+array.set(fiboArray, 6, 0.666)
+array.set(fiboArray, 7, 0.75)
+array.set(fiboArray, 8, 0.833)
+
+array.set(istimelevel, 0, istimelevel1)
+array.set(istimelevel, 1, istimelevel2)
+array.set(istimelevel, 2, istimelevel3)
+array.set(istimelevel, 3, istimelevel4)
+array.set(istimelevel, 4, istimelevel5)
+array.set(istimelevel, 5, istimelevel6)
+array.set(istimelevel, 6, istimelevel7)
+array.set(istimelevel, 7, istimelevel8)
+array.set(istimelevel, 8, istimelevel9)
+
+array.set(ispricelevel, 0, ispricelevel1)
+array.set(ispricelevel, 1, ispricelevel2)
+array.set(ispricelevel, 2, ispricelevel3)
+array.set(ispricelevel, 3, ispricelevel4)
+array.set(ispricelevel, 4, ispricelevel5)
+array.set(ispricelevel, 5, ispricelevel6)
+array.set(ispricelevel, 6, ispricelevel7)
+array.set(ispricelevel, 7, ispricelevel8)
+array.set(ispricelevel, 8, ispricelevel9)
+
+// *****************************************************************************
+// ******************************** Fucntions **********************************
+// *****************************************************************************
+
+// =============================================================================
+// * This function will update the box that goes on the edge of the Gann's
+// * square
+// =============================================================================
+updateBox() =>
+    box.set_left(squareLines, startBarIndex)
+    box.set_top(squareLines, upperPrice)
+    box.set_right(squareLines, endBarIndex)
+    box.set_bottom(squareLines, lowerPrice)
+
+// =============================================================================
+// * This function will update the background of the Gann's square
+// =============================================================================
+updateBackgrounds() =>
+    s1 = startBarIndex
+    s2 = startBarIndex + ((squares / 3) * candlesPerDivision)
+    s3 = startBarIndex + ((squares / 3) * 2 * candlesPerDivision)
+    s4 = endBarIndex
+    t1 = upperPrice
+    t2 = upperPrice - ((upperPrice - lowerPrice) / 3)
+    t3 = upperPrice - ((upperPrice - lowerPrice) / 3) * 2
+    t4 = lowerPrice
+
+    box.set_left(back1Square, s1)
+    box.set_right(back1Square, s2)
+    box.set_top(back1Square, t1)
+    box.set_bottom(back1Square, t2)
+    
+    box.set_left(back2Square, s2)
+    box.set_right(back2Square, s3)
+    box.set_top(back2Square, t1)
+    box.set_bottom(back2Square, t2)
+
+    box.set_left(back3Square, s3)
+    box.set_right(back3Square, s4)
+    box.set_top(back3Square, t1)
+    box.set_bottom(back3Square, t2)
+
+    box.set_left(back4Square, s1)
+    box.set_right(back4Square, s2)
+    box.set_top(back4Square, t2)
+    box.set_bottom(back4Square, t3)
+
+    box.set_left(back5Square, s2)
+    box.set_right(back5Square, s3)
+    box.set_top(back5Square, t2)
+    box.set_bottom(back5Square, t3)
+
+    box.set_left(back6Square, s3)
+    box.set_right(back6Square, s4)
+    box.set_top(back6Square, t2)
+    box.set_bottom(back6Square, t3)
+
+    box.set_left(back7Square, s1)
+    box.set_right(back7Square, s2)
+    box.set_top(back7Square, t3)
+    box.set_bottom(back7Square, t4)
+
+    box.set_left(back8Square, s2)
+    box.set_right(back8Square, s3)
+    box.set_top(back8Square, t3)
+    box.set_bottom(back8Square, t4)
+
+    box.set_left(back9Square, s3)
+    box.set_right(back9Square, s4)
+    box.set_top(back9Square, t3)
+    box.set_bottom(back9Square, t4)
+
+// =============================================================================
+// * Build both X-Axis and y-Axis labels
+// * It will use the topXAxisArray, bottomXAxisArray, rightYAxisArray, and
+// * leftYAxisArray arrays to store each label, if they are enabled to be shown
+// =============================================================================
+buildAxis() =>
+    for int j = 0 to squares by 5
+        if showTopXAxis
+            array.push(topXAxisArray, label.new(startBarIndex + j * candlesPerDivision, upperPrice + atr / 4, str.tostring(j), style=lineNone, textcolor=labelColor))
+        if showBottomXAxis
+            array.push(bottomXAxisArray, label.new(startBarIndex + j * candlesPerDivision, lowerPrice - atr / 2, str.tostring(j), style=lineNone, textcolor=labelColor))
+        if showRightYAxis
+            price = upperPrice - (upperPrice - lowerPrice) / squares * j
+            t = str.tostring(j) + (showPrices ? " (" + str.tostring(math.round_to_mintick(price)) + ")" : "")
+            array.push(rightYAxisArray, label.new(endBarIndex + 8 * candlesPerDivision, price, t, style=lineNone, textcolor=labelColor))
+        if showLeftYAxis
+            array.push(leftYAxisArray, label.new(startBarIndex - 3, upperPrice - (upperPrice - lowerPrice) / squares * j, str.tostring(j), style=lineNone, textcolor=labelColor))
+
+// =============================================================================
+// * Update both X-Axis and y-Axis labels
+// =============================================================================
+updateAxis() =>
+    for int j = 0 to squares - 1 by 5
+        if showTopXAxis
+            label.set_x(array.get(topXAxisArray,    j / 5), startBarIndex + j * candlesPerDivision)
+            label.set_y(array.get(topXAxisArray,    j / 5), upperPrice + atr / 4)
+        if showBottomXAxis
+            label.set_x(array.get(bottomXAxisArray, j / 5), startBarIndex + j * candlesPerDivision)
+            label.set_y(array.get(bottomXAxisArray, j / 5), lowerPrice - atr / 2)
+        if showRightYAxis
+            label.set_x(array.get(rightYAxisArray,  j / 5), endBarIndex + 8 * candlesPerDivision)
+            label.set_y(array.get(rightYAxisArray,  j / 5), upperPrice - (upperPrice - lowerPrice) / squares * j)
+        if showLeftYAxis
+            label.set_x(array.get(rightYAxisArray,  j / 5), startBarIndex - 3)
+            label.set_y(array.get(rightYAxisArray,  j / 5), upperPrice - (upperPrice - lowerPrice) / squares * j)
+
+// =============================================================================
+// * Build the vertical divisions to divide the square in 9 smaller squares
+// =============================================================================
+buildDivisions() =>
+    array.push(divisionsArray, line.new(startBarIndex, lowerPrice + onethirdPrice, endBarIndex, lowerPrice + onethirdPrice, color=divisionsColor, style=lineDashed))
+    array.push(divisionsArray, line.new(startBarIndex, lowerPrice + onethirdPrice * 2, endBarIndex, lowerPrice + onethirdPrice * 2, color=divisionsColor, style=lineDashed))
+    array.push(divisionsArray, line.new(startBarIndex + onethirdPriceBar, upperPrice, startBarIndex + onethirdPriceBar, lowerPrice, color=divisionsColor, style=lineDashed))
+    array.push(divisionsArray, line.new(startBarIndex + onethirdPriceBar * 2, upperPrice, startBarIndex + onethirdPriceBar * 2, lowerPrice, color=divisionsColor, style=lineDashed))
+
+// =============================================================================
+// * Update the vertical divisions
+// =============================================================================
+updateDivisions() =>
+    line.set_xy1(array.get(divisionsArray, 0), startBarIndex, lowerPrice + onethirdPrice)
+    line.set_xy2(array.get(divisionsArray, 0), endBarIndex, lowerPrice + onethirdPrice)
+    line.set_xy1(array.get(divisionsArray, 1), startBarIndex, lowerPrice + onethirdPrice * 2)
+    line.set_xy2(array.get(divisionsArray, 1), endBarIndex, lowerPrice + onethirdPrice * 2)
+    line.set_xy1(array.get(divisionsArray, 2), startBarIndex + onethirdPriceBar, upperPrice)
+    line.set_xy2(array.get(divisionsArray, 2), startBarIndex + onethirdPriceBar, lowerPrice)
+    line.set_xy1(array.get(divisionsArray, 3), startBarIndex + onethirdPriceBar * 2, upperPrice)
+    line.set_xy2(array.get(divisionsArray, 3), startBarIndex + onethirdPriceBar * 2, lowerPrice)
+
+// =============================================================================
+// * Build the Gann's square. It will create lines based on the inputs and store
+// * them in some arrays. It will use the showGroup array to check if the line
+// * needs to be created or not. If showExtraLines is enabled, it will create 
+// * specific lines to provide the original Gann's Square format
+// =============================================================================    
+buildSquare() =>
+    int multi = squares / 90
+    for int i = 0 to (squares / 5 / multi) - 1
+        int endIndex = startBarIndex + 5 * multi * (i + 1) * candlesPerDivision
+        float endPrice = upperPrice - ((upperPrice - lowerPrice) / squares) * 5 * multi * (i + 1)
+        string style = array.get(dashedLineStyles, i) ? lineDashed : lineSolid
+        string extend = array.get(extendLines, i) ? extend.both : extend.none
+        if array.get(showGroup, i * 8)
+            // Top Left Bottom
+            array.push(TLBArray, line.new(startBarIndex, upperPrice, endIndex, lowerPrice, color=array.get(lineColors, i), style=style, extend=extend))            
+        if array.get(showGroup, i * 8 + 1)
+            // Top Left Right
+            array.push(TLRArray, line.new(startBarIndex, upperPrice, endBarIndex, endPrice, color=array.get(lineColors, i), style=style, extend=extend))
+        if array.get(showGroup, i * 8 + 2)
+            // Bottom Left Top
+            array.push(BLTArray, line.new(startBarIndex, lowerPrice, endIndex, upperPrice, color=array.get(lineColors, i), style=style, extend=extend))
+        if array.get(showGroup, i * 8 + 3)
+            // Bottom Left Right
+            array.push(BLRArray, line.new(startBarIndex, lowerPrice, endBarIndex, endPrice, color=array.get(lineColors, i), style=style, extend=extend))
+        if array.get(showGroup, i * 8 + 4)
+            // Top Right Bottom
+            array.push(TRBArray, line.new(endBarIndex, upperPrice, endIndex, lowerPrice, color=array.get(lineColors, i), style=style, extend=extend))
+        if array.get(showGroup, i * 8 + 5)
+            // Top Right Left
+            array.push(TRLArray, line.new(endBarIndex, upperPrice, startBarIndex, endPrice, color=array.get(lineColors, i), style=style, extend=extend))
+        if array.get(showGroup, i * 8 + 6)
+            // Bottom Right Top
+            array.push(BRTArray, line.new(endBarIndex, lowerPrice, endIndex, upperPrice, color=array.get(lineColors, i), style=style, extend=extend))
+        if array.get(showGroup, i * 8 + 7)
+            // Bottom Right Left
+            array.push(BRLArray, line.new(endBarIndex, lowerPrice, startBarIndex, endPrice, color=array.get(lineColors, i), style=style, extend=extend))
+    
+    array.push(diamondArray, line.new(startBarIndex, (upperPrice+lowerPrice)/2, (startBarIndex+endBarIndex)/2, upperPrice, color=color.green, style=lineSolid, extend=extend.none))    
+    array.push(diamondArray, line.new(startBarIndex, (upperPrice+lowerPrice)/2, (startBarIndex+endBarIndex)/2, lowerPrice, color=color.green, style=lineSolid, extend=extend.none))
+    array.push(diamondArray, line.new(endBarIndex, (upperPrice+lowerPrice)/2, (startBarIndex+endBarIndex)/2, upperPrice, color=color.green, style=lineSolid, extend=extend.none))
+    array.push(diamondArray, line.new(endBarIndex, (upperPrice+lowerPrice)/2, (startBarIndex+endBarIndex)/2, lowerPrice, color=color.green, style=lineSolid, extend=extend.none))
+    
+    if timelevelEnabled
+        for int i = 0 to array.size(istimelevel) - 1
+            if array.get(istimelevel, i)
+                int inx = math.round(startBarIndex + (endBarIndex - startBarIndex) * array.get(fiboArray, i))
+                array.push(fiboTimeArray, line.new(inx, upperPrice, inx, lowerPrice, color=color.black, style=lineSolid, extend=extend.none))
+
+    if pricelevelEnabled
+        for int i = 0 to array.size(ispricelevel) - 1
+            if array.get(ispricelevel, i)
+                int lvl = math.round(upperPrice - (upperPrice - lowerPrice) * array.get(fiboArray, i))
+                array.push(fiboPriceArray, line.new(startBarIndex, lvl, endBarIndex, lvl, color=color.black, style=lineSolid, extend=extend.none))
+ 
+// =============================================================================
+// * Update each line created for the Gann's square
+// =============================================================================    
+updateSquare() =>
+    int multi = squares / 90
+    if  array.size(TLBArray) == (squares / 5 / multi) - 1 and
+           array.size(TLRArray) == (squares / 5 / multi) - 1 and
+           array.size(BLTArray) == (squares / 5 / multi) - 1
+        
+        for int i = 0 to (squares / 5 / multi) - 1
+            int endIndex = startBarIndex + 5 * multi * i * candlesPerDivision
+            float endPrice = upperPrice - ((upperPrice - lowerPrice) / squares) * 5 * multi * i
+            if array.get(showGroup, i * 8)
+                // Top Left Bottom
+                line.set_xy1(array.get(TLBArray, i), startBarIndex, upperPrice)
+                line.set_xy2(array.get(TLBArray, i), endIndex,      lowerPrice)
+            if array.get(showGroup, i * 8 + 1)
+                // Top Left Right
+                line.set_xy1(array.get(TLRArray, i), startBarIndex, upperPrice)
+                line.set_xy2(array.get(TLRArray, i), endBarIndex,   endPrice)
+            if array.get(showGroup, i * 8 + 2)
+                // Bottom Left Top
+                line.set_xy1(array.get(BLTArray, i), startBarIndex, lowerPrice)
+                line.set_xy2(array.get(BLTArray, i), endIndex,      upperPrice)
+            if array.get(showGroup, i * 8 + 3)
+                // Bottom Left Right
+                line.set_xy1(array.get(BLRArray, i), startBarIndex, lowerPrice)
+                line.set_xy2(array.get(BLRArray, i), endBarIndex,   endPrice)
+            if array.get(showGroup, i * 8 + 4)
+                // Top Right Bottom
+                line.set_xy1(array.get(TRBArray, i), endBarIndex,   upperPrice)
+                line.set_xy2(array.get(TRBArray, i), endIndex,      lowerPrice)
+            if array.get(showGroup, i * 8 + 5)
+                // Top Right Left
+                line.set_xy1(array.get(TRLArray, i), endBarIndex,   upperPrice)
+                line.set_xy2(array.get(TRLArray, i), startBarIndex, endPrice)
+            if array.get(showGroup, i * 8 + 6)
+                // Bottom Right Top
+                line.set_xy1(array.get(BRTArray, i), endBarIndex,   lowerPrice)
+                line.set_xy2(array.get(BRTArray, i), endIndex,      upperPrice)
+            if array.get(showGroup, i * 8 + 7)
+                // Bottom Right Left
+                line.set_xy1(array.get(BRLArray, i), endBarIndex,   lowerPrice)
+                line.set_xy2(array.get(BRLArray, i), startBarIndex, endPrice)
+
+// =============================================================================
+// * Create the grid lines for reference
+// =============================================================================
+buildGrid() =>
+    for int i = 0 to (squares / 5)
+        index = startBarIndex + 5 * (i + 1) * candlesPerDivision
+        price = upperPrice - ((upperPrice - lowerPrice) / squares) *  5 * (i + 1)
+        array.push(gridArray, line.new(index, upperPrice, index, lowerPrice, color=gridColor, style=lineDotted))
+        array.push(gridArray, line.new(startBarIndex, price, endBarIndex, price, color=gridColor, style=lineDotted))
+
+// =============================================================================
+// * Update the grid lines
+// =============================================================================
+updateGrid() =>
+    for int i = 0 to (squares / 5)
+        index = startBarIndex + 5 * (i + 1) * candlesPerDivision
+        price = upperPrice - ((upperPrice - lowerPrice) / squares) *  5 * (i + 1)
+        line.set_xy1(array.get(gridArray, i * 2), index, upperPrice)
+        line.set_xy2(array.get(gridArray, i * 2), index, lowerPrice)
+        line.set_xy1(array.get(gridArray, i * 2 + 1), startBarIndex, price)
+        line.set_xy2(array.get(gridArray, i * 2 + 1), endBarIndex, price)
+
+// =============================================================================
+// * Set lines pattern to override the parameters input of each division. When an
+// * option besides None is selected, it will ignore the selections of each line
+// =============================================================================
+setPattern() =>
+    if patterns != "None"
+        for int i = 0 to array.size(showGroup) - 1
+            array.set(showGroup, i, false)
+    if patterns == "Arrow"
+        array.set(showGroup, 88, true) // Top Left to Bottom 72
+        array.set(showGroup, 89, true) // Top Left to Right 72
+        array.set(showGroup, 90, true) // Bottom Left to Top 72
+        array.set(showGroup, 91, true) // Bottom Left to Right 72
+    else if patterns == "Star"
+        array.set(showGroup, 88, true) // Top Left to Bottom 72 
+        array.set(showGroup, 89, true) // Top Left to Right 72
+        array.set(showGroup, 90, true) // Bottom Left to Top 72
+        array.set(showGroup, 91, true) // Bottom Left to Right 72
+        array.set(showGroup, 92, true) // Top Right to Bottom 72
+        array.set(showGroup, 93, true) // Top Right to Left 72
+        array.set(showGroup, 94, true) // Bottom Right to Top 72
+        array.set(showGroup, 95, true) // Bottom Right to Left 72
+    else if patterns == "36, 72, and 108"
+        array.set(showGroup, 40, true) // Top Left to Bottom 36
+        array.set(showGroup, 41, true) // Top Left to Right 36
+        array.set(showGroup, 42, true) // Bottom Left to Top 36
+        array.set(showGroup, 45, true) // Top Right to Left 36
+        array.set(showGroup, 88, true) // Top Left to Bottom 72
+        array.set(showGroup, 89, true) // Top Left to Right 72
+        array.set(showGroup, 90, true) // Bottom Left to Top 72
+        array.set(showGroup, 91, true) // Bottom Left to Right 72
+        array.set(showGroup, 92, true) // Top Right to Bottom 72
+        array.set(showGroup, 93, true) // Top Right to Left 72
+        array.set(showGroup, 94, true) // Bottom Right to Top 72
+        array.set(showGroup, 95, true) // Bottom Right to Left 72
+        array.set(showGroup, 139, true) // Bottom Left to Right 108
+        array.set(showGroup, 140, true) // Top Right to Bottom 108
+        array.set(showGroup, 142, true) // Bottom Right to Top 108
+        array.set(showGroup, 143, true) // Bottom Right to Left 108
+        array.set(showGroup, 184, true) // Top Left to Corner 144
+        array.set(showGroup, 186, true) // Top Right to Corner 144
+    else if patterns == "Arrow Cross"
+        array.set(showGroup, 88, true) // Top Left to Bottom 72
+        array.set(showGroup, 89, true) // Top Left to Right 72
+        array.set(showGroup, 90, true) // Bottom Left to Top 72
+        array.set(showGroup, 91, true) // Bottom Left to Right 72
+        array.set(showGroup, 184, true) // Top Left to Corner 144
+        array.set(showGroup, 186, true) // Top Right to Corner 144
+    else if patterns == "Corners and Cross"
+        array.set(showGroup, 88, true) // Top Left to Bottom 72
+        array.set(showGroup, 89, true) // Top Left to Right 72
+        array.set(showGroup, 90, true) // Bottom Left to Top 72
+        array.set(showGroup, 91, true) // Bottom Left to Right 72
+        array.set(showGroup, 92, true) // Top Right to Bottom 72
+        array.set(showGroup, 93, true) // Top Right to Left 72
+        array.set(showGroup, 94, true) // Bottom Right to Top 72
+        array.set(showGroup, 95, true) // Bottom Right to Left 72
+        array.set(showGroup, 184, true) // Top Left to Corner 144
+        array.set(showGroup, 186, true) // Top Right to Corner 144
+    else if patterns == "Master"
+        array.set(showGroup, 42, true) // Bottom Left to Top 36
+        array.set(showGroup, 43, true) // Bottom Left to Right 36
+        array.set(showGroup, 88, true) // Top Left to Bottom 72
+        array.set(showGroup, 89, true) // Top Left to Right 72
+        array.set(showGroup, 90, true) // Bottom Left to Top 72
+        array.set(showGroup, 91, true) // Bottom Left to Right 72
+        array.set(showGroup, 138, true) // Bottom Left to Top 108
+        array.set(showGroup, 139, true) // Bottom Left to Right 108
+        array.set(showGroup, 184, true) // Top Left to Corner 144
+        array.set(showGroup, 186, true) // Top Right to Corner 144
+        
+// *****************************************************************************
+// ************************** Run On Every Tick ********************************
+// *****************************************************************************
+
+if updateNewBar and buildSquareDone and barstateIsNew and autoPricesAndBar
+    updateSquare()
+    updateAxis()
+    updateBox()
+    if showDivisions
+        updateDivisions()
+    if showGrid
+        updateGrid()
+    if showBackground
+        updateBackgrounds()
+
+// *****************************************************************************
+// ****************************** Run Once *************************************
+// *****************************************************************************
+if buildInputsDone
+    if time == startDate
+        startBarIndex := barIndex
+    if barstateIsLast and not buildSquareDone
+        setPattern()
+        updateBox()
+        buildSquare()
+        buildAxis() 
+        if showDivisions
+            buildDivisions()
+        if showGrid
+            buildGrid()
+        if showBackground
+            updateBackgrounds()
+        buildSquareDone := true
+
+// =============================================================================
+// * Create all the lines inputs, together with the color of each one, line style and 
+// * extend type. The default values are those originally found in W.D. Gann's book.
+// * The order of each line matters for the comparison inside the functions
+// =============================================================================
+if not buildInputsDone
+    buildInputsDone := true
+    lineColors := array.concat(lineColors, array.from(
+           color.green, //"Line Color", inline="line", group="Connections from corners to 5"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 10"),
+           color.red,   //"Line Color",   inline="line", group="Connections from corners to 15"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 20"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 25"),
+           color.red,   //"Line Color",   inline="line", group="Connections from corners to 30"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 35"),
+           color.red,   //"Line Color",   inline="line", group="Connections from corners to 40"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 45"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 50"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 55"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 60"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 65"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 70"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 75"),
+           color.red,   //"Line Color",   inline="line", group="Connections from corners to 80"),
+           color.green, //"Line Color", inline="line", group="Connections from corners to 85"),
+           color.green)) //"Line Color",   inline="line", group="Connections from corners to 90")))
+           
+    extendLines := array.concat(extendLines, array.from(
+           false, //"Extend Line", inline="line", group="Connections from corners to 5"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 10"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 15"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 20"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 25"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 30"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 35"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 40"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 45"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 50"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 55"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 60"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 65"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 70"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 75"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 80"),
+           false, //"Extend Line", inline="line", group="Connections from corners to 85"),
+           false)) //"Extend Line", inline="line", group="Connections from corners to 90")))
+    
+    dashedLineStyles := array.concat(dashedLineStyles, array.from(
+           false, //"Dashed Line", inline="line", group="Connections from corners to 5"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 10"),
+           false, //"Dashed Line",  inline="line", group="Connections from corners to 15"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 20"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 25"),
+           false, //"Dashed Line",  inline="line", group="Connections from corners to 30"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 35"),
+           false, //"Dashed Line",  inline="line", group="Connections from corners to 40"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 45"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 50"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 55"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 60"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 65"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 70"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 75"),
+           false, //"Dashed Line",  inline="line", group="Connections from corners to 80"),
+           false, //"Dashed Line", inline="line", group="Connections from corners to 85"),
+           false)) //"Dashed Line",  inline="line", group="Connections from corners to 90")))
+    
+    showGroup := array.concat(showGroup, array.from(
+           false, //"┏ ↓", inline="5",  group="Connections from corners to 5"),
+           false, //"┏ →", inline="5",  group="Connections from corners to 5"),
+           false, //"┗ ↑", inline="5",  group="Connections from corners to 5"),
+           false, //"┗ →", inline="5",  group="Connections from corners to 5"),
+           false, //"┓ ←", inline="5",  group="Connections from corners to 5"),
+           false, //"┓ ↓", inline="5",  group="Connections from corners to 5"),
+           false, //"┛ ←", inline="5",  group="Connections from corners to 5"),
+           false, //"┛ ↑", inline="5",  group="Connections from corners to 5"),
+           false, //"┏ ↓", inline="10", group="Connections from corners to 10"),
+           false, //"┏ →", inline="10", group="Connections from corners to 10"),
+           false, //"┗ ↑", inline="10", group="Connections from corners to 10"),
+           false, //"┗ →", inline="10", group="Connections from corners to 10"),
+           false, //"┓ ←", inline="10", group="Connections from corners to 10"),
+           false, //"┓ ↓", inline="10", group="Connections from corners to 10"),
+           false, //"┛ ←", inline="10", group="Connections from corners to 10"),
+           false, //"┛ ↑", inline="10", group="Connections from corners to 10"),
+           false, //"┏ ↓", inline="15", group="Connections from corners to 15"),
+           false, //"┏ →", inline="15", group="Connections from corners to 15"),
+           false, //"┗ ↑", inline="15", group="Connections from corners to 15"),
+           false, //"┗ →", inline="15", group="Connections from corners to 15"),
+           false, //"┓ ←", inline="15", group="Connections from corners to 15"),
+           false, //"┓ ↓", inline="15", group="Connections from corners to 15"),
+           false, //"┛ ←", inline="15", group="Connections from corners to 15"),
+           false, //"┛ ↑", inline="15", group="Connections from corners to 15"),
+           false, //"┏ ↓", inline="20", group="Connections from corners to 20"),
+           false, //"┏ →", inline="20", group="Connections from corners to 20"),
+           false, //"┗ ↑", inline="20", group="Connections from corners to 20"),
+           false, //"┗ →", inline="20", group="Connections from corners to 20"),
+           false, //"┓ ←", inline="20", group="Connections from corners to 20"),
+           false, //"┓ ↓", inline="20", group="Connections from corners to 20"),
+           false, //"┛ ←", inline="20", group="Connections from corners to 20"),
+           false, //"┛ ↑", inline="20", group="Connections from corners to 20"),
+           false, //"┏ ↓", inline="25", group="Connections from corners to 25"),
+           false, //"┏ →", inline="25", group="Connections from corners to 25"),
+           false, //"┗ ↑", inline="25", group="Connections from corners to 25"),
+           false, //"┗ →", inline="25", group="Connections from corners to 25"),
+           false, //"┓ ←", inline="25", group="Connections from corners to 25"),
+           false, //"┓ ↓", inline="25", group="Connections from corners to 25"),
+           false, //"┛ ←", inline="25", group="Connections from corners to 25"),
+           false, //"┛ ↑", inline="25", group="Connections from corners to 25"),
+           false, //"┏ ↓", inline="30", group="Connections from corners to 30"),
+           false, //"┏ →", inline="30", group="Connections from corners to 30"),
+           false, //"┗ ↑", inline="30", group="Connections from corners to 30"),
+           false, //"┗ →", inline="30", group="Connections from corners to 30"),
+           false, //"┓ ←", inline="30", group="Connections from corners to 30"),
+           false, //"┓ ↓", inline="30", group="Connections from corners to 30"),
+           false, //"┛ ←", inline="30", group="Connections from corners to 30"),
+           false, //"┛ ↑", inline="30", group="Connections from corners to 30"),
+           false, //"┏ ↓", inline="35", group="Connections from corners to 35"),
+           false, //"┏ →", inline="35", group="Connections from corners to 35"),
+           false, //"┗ ↑", inline="35", group="Connections from corners to 35"),
+           false, //"┗ →", inline="35", group="Connections from corners to 35"),
+           false, //"┓ ←", inline="35", group="Connections from corners to 35"),
+           false, //"┓ ↓", inline="35", group="Connections from corners to 35"),
+           false, //"┛ ←", inline="35", group="Connections from corners to 35"),
+           false, //"┛ ↑", inline="35", group="Connections from corners to 35"),
+           false, //"┏ ↓", inline="40", group="Connections from corners to 40"),
+           false, //"┏ →", inline="40", group="Connections from corners to 40"),
+           false, //"┗ ↑", inline="40", group="Connections from corners to 40"),
+           false, //"┗ →", inline="40", group="Connections from corners to 40"),
+           false, //"┓ ←", inline="40", group="Connections from corners to 40"),
+           false, //"┓ ↓", inline="40", group="Connections from corners to 40"),
+           false, //"┛ ←", inline="40", group="Connections from corners to 40"),
+           false, //"┛ ↑", inline="40", group="Connections from corners to 40"),
+           true, //"┏ ↓", inline="45", group="Connections from corners to 45"),
+           true, //"┏ →", inline="45", group="Connections from corners to 45"),
+           true, //"┗ ↑", inline="45", group="Connections from corners to 45"),
+           true, //"┗ →", inline="45", group="Connections from corners to 45"),
+           true, //"┓ ←", inline="45", group="Connections from corners to 45"),
+           true, //"┓ ↓", inline="45", group="Connections from corners to 45"),
+           true, //"┛ ←", inline="45", group="Connections from corners to 45"),
+           true, //"┛ ↑", inline="45", group="Connections from corners to 45"),
+           false, //"┏ ↓", inline="50", group="Connections from corners to 50"),
+           false, //"┏ →", inline="50", group="Connections from corners to 50"),
+           false, //"┗ ↑", inline="50", group="Connections from corners to 50"),
+           false, //"┗ →", inline="50", group="Connections from corners to 50"),
+           false, //"┓ ←", inline="50", group="Connections from corners to 50"),
+           false, //"┓ ↓", inline="50", group="Connections from corners to 50"),
+           false, //"┛ ←", inline="50", group="Connections from corners to 50"),
+           false, //"┛ ↑", inline="50", group="Connections from corners to 50"),
+           false, //"┏ ↓", inline="55", group="Connections from corners to 55"),
+           false, //"┏ →", inline="55", group="Connections from corners to 55"),
+           false, //"┗ ↑", inline="55", group="Connections from corners to 55"),
+           false, //"┗ →", inline="55", group="Connections from corners to 55"),
+           false, //"┓ ←", inline="55", group="Connections from corners to 55"),
+           false, //"┓ ↓", inline="55", group="Connections from corners to 55"),
+           false, //"┛ ←", inline="55", group="Connections from corners to 55"),
+           false, //"┛ ↑", inline="55", group="Connections from corners to 55"),
+           false, //"┏ ↓", inline="60", group="Connections from corners to 60"),
+           false, //"┏ →", inline="60", group="Connections from corners to 60"),
+           false, //"┗ ↑", inline="60", group="Connections from corners to 60"),
+           false, //"┗ →", inline="60", group="Connections from corners to 60"),
+           false, //"┓ ←", inline="60", group="Connections from corners to 60"),
+           false, //"┓ ↓", inline="60", group="Connections from corners to 60"),
+           false, //"┛ ←", inline="60", group="Connections from corners to 60"),
+           false, //"┛ ↑", inline="60", group="Connections from corners to 60"),
+           false, //"┏ ↓", inline="65", group="Connections from corners to 65"),
+           false, //"┏ →", inline="65", group="Connections from corners to 65"),
+           false, //"┗ ↑", inline="65", group="Connections from corners to 65"),
+           false, //"┗ →", inline="65", group="Connections from corners to 65"),
+           false, //"┓ ←", inline="65", group="Connections from corners to 65"),
+           false, //"┓ ↓", inline="65", group="Connections from corners to 65"),
+           false, //"┛ ←", inline="65", group="Connections from corners to 65"),
+           false, //"┛ ↑", inline="65", group="Connections from corners to 65"),
+           false, //"┏ ↓", inline="70", group="Connections from corners to 70"),
+           false, //"┏ →", inline="70", group="Connections from corners to 70"),
+           false, //"┗ ↑", inline="70", group="Connections from corners to 70"),
+           false, //"┗ →", inline="70", group="Connections from corners to 70"),
+           false, //"┓ ←", inline="70", group="Connections from corners to 70"),
+           false, //"┓ ↓", inline="70", group="Connections from corners to 70"),
+           false, //"┛ ←", inline="70", group="Connections from corners to 70"),
+           false, //"┛ ↑", inline="70", group="Connections from corners to 70"),
+           false, //"┏ ↓", inline="75", group="Connections from corners to 75"),
+           false, //"┏ →", inline="75", group="Connections from corners to 75"),
+           false, //"┗ ↑", inline="75", group="Connections from corners to 75"),
+           false, //"┗ →", inline="75", group="Connections from corners to 75"),
+           false, //"┓ ←", inline="75", group="Connections from corners to 75"),
+           false, //"┓ ↓", inline="75", group="Connections from corners to 75"),
+           false, //"┛ ←", inline="75", group="Connections from corners to 75"),
+           false, //"┛ ↑", inline="75", group="Connections from corners to 75"),
+           false, //"┏ ↓", inline="80", group="Connections from corners to 80"),
+           false, //"┏ →", inline="80", group="Connections from corners to 80"),
+           false, //"┗ ↑", inline="80", group="Connections from corners to 80"),
+           false, //"┗ →", inline="80", group="Connections from corners to 80"),
+           false, //"┓ ←", inline="80", group="Connections from corners to 80"),
+           false, //"┓ ↓", inline="80", group="Connections from corners to 80"),
+           false, //"┛ ←", inline="80", group="Connections from corners to 80"),
+           false, //"┛ ↑", inline="80", group="Connections from corners to 80"),
+           false, //"┏ ↓", inline="85", group="Connections from corners to 85"),
+           false, //"┏ →", inline="85", group="Connections from corners to 85"),
+           false, //"┗ ↑", inline="85", group="Connections from corners to 85"),
+           false, //"┗ →", inline="85", group="Connections from corners to 85"),
+           false, //"┓ ←", inline="85", group="Connections from corners to 85"),
+           false, //"┓ ↓", inline="85", group="Connections from corners to 85"),
+           false, //"┛ ←", inline="85", group="Connections from corners to 85"),
+           false, //"┛ ↑", inline="85", group="Connections from corners to 85"),
+           true, //"┏ ↓", inline="90", group="Connections from corners to 90"),
+           true, //"┏ →", inline="90", group="Connections from corners to 90"),
+           true, //"┗ ↑", inline="90", group="Connections from corners to 90"),
+           true, //"┗ →", inline="90", group="Connections from corners to 90"),
+           true, //"┓ ←", inline="90", group="Connections from corners to 90"),
+           true, //"┓ ↓", inline="90", group="Connections from corners to 90"),
+           true, //"┛ ←", inline="90", group="Connections from corners to 90"),
+           true)) //"┛ ↑", inline="90", group="Connections from corners to 90")))
